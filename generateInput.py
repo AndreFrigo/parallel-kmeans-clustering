@@ -22,7 +22,7 @@ while(i<numelem):
         i+=1
 
 
-with open('dataset_'+str(numcol)+'_'+str(numelem)+'.csv', 'w', encoding='UTF8', newline='') as f:
+with open('datasets/dataset_'+str(numcol)+'_'+str(numelem)+'.csv', 'w', encoding='UTF8', newline='') as f:
     writer = csv.writer(f)
 
     # write the header
