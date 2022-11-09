@@ -76,3 +76,49 @@ int chooseCluster(int p, int k, int ncol, float *matrix, float *centroids){
     }
     return c;
 }
+
+void matrixSum(int nrow, int ncol, float *matrix1, float *matrix2){
+    int i;
+    for(i=0;i<nrow*ncol;i++){
+        matrix1[i] += matrix2[i];
+    }
+}
+
+void matrixSumParallel(int omp, int nrow, int ncol, float *matrix1, float *matrix2){
+    int i;
+    #pragma omp parallel for num_threads(omp)
+    for(i=0;i<nrow;i++){
+        int j;
+        for(j=0;j<ncol;j++){
+            matrix1[i*ncol+j] = matrix2[i*ncol+j];
+        }
+    }
+}
+
+void matrixMean(int omp, int nrow, int ncol, float *matrix){
+    int i;
+    #pragma omp parallel for num_threads(omp)
+    for(i=0;i<nrow;i++){
+        int j;
+        for(j=1;j<ncol;j++) matrix[i*ncol+j] /= matrix[i*ncol];
+        matrix[i*ncol] = 1.0; 
+    }
+}
+
+bool isInArray(int elem, int dim, int *array){
+    int i;
+    for(i=0;i<dim;i++){
+        if(array[i] == -1) return false;
+        if(array[i] == elem) return true;
+    }
+    return false;
+}
+
+bool isSameFloat(float f0, float f1, float error){
+    if(f0-f1>error || f0-f1<-1*error) return false;
+    return true;
+}
+
+bool stopExecution(int nrow, int ncol, float *matrix0, float *matrix1){
+    //TODO
+}
