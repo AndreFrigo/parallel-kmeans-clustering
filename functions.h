@@ -12,7 +12,7 @@ void readFile(char *filename, int nrow, int ncol, float *dataMatrix);
 //utils.c 
 
 //print a float matrix
-void printMatrix(int nrow, int ncol, float *dataMatrix);
+void printMatrix(int nrow, int ncol, float *dataMatrix, bool printFirstColumn);
 //add an empty row to the matrix
 void addEmptyRow(int row, int ncol, float *dataMatrix);
 //check if a row is not significant, return true if it is empty, otherwise false

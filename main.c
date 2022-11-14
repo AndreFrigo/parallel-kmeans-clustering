@@ -60,7 +60,7 @@ int main(int argc, char *argv[]){
         
         readFile(filename, nrow, ncol, dataMatrix);
 
-        // printMatrix(nrow, ncol, dataMatrix);
+        // printMatrix(nrow, ncol+1, dataMatrix, false);
 
     }
 
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]){
     MPI_Scatter(dataMatrix, scatterRow*(ncol+1), MPI_FLOAT, recvMatrix, scatterRow*(ncol+1), MPI_FLOAT, 0, MPI_COMM_WORLD);
 
     // printf("PROCESS %d\n", my_rank);
-    // printMatrix(scatterRow, ncol, recvMatrix);
+    // printMatrix(scatterRow, ncol+1, recvMatrix, false);
 
     centroids = (float *)malloc(k * ncol * sizeof(float));
     //for each process a matrix that stores the sum of all points of each cluster and the number of points
@@ -106,7 +106,7 @@ int main(int argc, char *argv[]){
                 i--;
             }
         }
-        // printMatrix(k, ncol, centroids);
+        // printMatrix(k, ncol, centroids, true);
         free(dataMatrix);
         sumpointsP0 = (float *)malloc(k * (ncol+1) * sizeof(float));
     }
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]){
     MPI_Bcast(centroids, k*ncol, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
     // printf("PROC %d\n", my_rank);
-    // printMatrix(k, ncol, centroids);
+    // printMatrix(k, ncol, centroids, true);
 
     
     sumpoints = (float *)malloc(k * (ncol+1) * sizeof(float));
@@ -154,21 +154,21 @@ int main(int argc, char *argv[]){
         matrixSum(k, ncol+1, sumpoints, partialMatrix);
     }
     // printf("PROC %d\n",my_rank);
-    // printMatrix(k, ncol+1, sumpoints);
+    // printMatrix(k, ncol+1, sumpoints, true);
 
     MPI_Reduce(sumpoints, sumpointsP0, k*(ncol+1), MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
 
     if(my_rank==0){
-        // printMatrix(k, ncol+1, sumpointsP0);
+        // printMatrix(k, ncol+1, sumpointsP0, true);
         matrixMean(omp, k, ncol+1, sumpointsP0);
         printf("Previous centroids\n");
-        printMatrix(k, ncol, centroids);
+        printMatrix(k, ncol, centroids, true);
         int i,j;
         for(i=0; i<k; i++){
             for(j=0;j<ncol;j++) centroids[i*ncol+j] = sumpointsP0[i*(ncol+1)+j+1];
         }
         printf("Actual centroids\n");
-        printMatrix(k, ncol, centroids);
+        printMatrix(k, ncol, centroids, true);
     } 
     return 0;
 }
