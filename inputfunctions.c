@@ -61,9 +61,10 @@ void readFile(char *filename, int nrow, int ncol, float *dataMatrix){
     while (feof(fp) != true){
         fgets(row, MAXCHAR, fp);
         token = strtok(row, ",");
-        int c = 0;
+        int c = 1;
         while(token != NULL){
-            dataMatrix[r*ncol+c] = atof(token);
+            dataMatrix[r*(ncol+1)] = -1.0;
+            dataMatrix[r*(ncol+1)+c] = atof(token);
             token = strtok(NULL, ",");
             c++;
         }

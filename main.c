@@ -55,7 +55,7 @@ int main(int argc, char *argv[]){
         // MPI_Bcast(&nrow, 1, MPI_INT, 0, MPI_COMM_WORLD);
         // MPI_Bcast(&ncol, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-        dataMatrix = (float *)malloc(nrow * ncol * sizeof(float));
+        dataMatrix = (float *)malloc(nrow * (ncol+1) * sizeof(float));
         
         
         readFile(filename, nrow, ncol, dataMatrix);
@@ -73,9 +73,9 @@ int main(int argc, char *argv[]){
 
     //scatter the dataMatrix
     int scatterRow=nrow/n_proc;
-    float* recvMatrix = (float *)malloc(scatterRow * ncol * sizeof(float));
+    float* recvMatrix = (float *)malloc(scatterRow * (ncol+1) * sizeof(float));
     //scatter the matrix
-    MPI_Scatter(dataMatrix, scatterRow*ncol, MPI_FLOAT, recvMatrix, scatterRow*ncol, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(dataMatrix, scatterRow*(ncol+1), MPI_FLOAT, recvMatrix, scatterRow*(ncol+1), MPI_FLOAT, 0, MPI_COMM_WORLD);
 
     // printf("PROCESS %d\n", my_rank);
     // printMatrix(scatterRow, ncol, recvMatrix);
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]){
                 int c;
                 // printf("Random: row: %d\n", r);
                 for(c=0;c<ncol;c++){
-                    centroids[i*ncol+c] = dataMatrix[r*ncol+c];
+                    centroids[i*ncol+c] = dataMatrix[r*(ncol+1)+c+1];
                 }
                 alreadySelected[i] = r;
             }else{
@@ -143,7 +143,8 @@ int main(int argc, char *argv[]){
                 int j;
                 partialMatrix[res*(ncol+1)]++;
                 for(j=1;j<ncol+1;j++){
-                    partialMatrix[res*(ncol+1)+j] += recvMatrix[res*(ncol+1)+j];
+                    partialMatrix[res*(ncol+1)+j] += recvMatrix[i*(ncol+1)+j];
+                    recvMatrix[i*(ncol+1)] = res;
                 }
             }
             // printf("Proc %d Thread %d Point %d: cluster %d\n", my_rank, omp_get_thread_num(), i, chooseCluster(i, k, ncol, recvMatrix, centroids));
