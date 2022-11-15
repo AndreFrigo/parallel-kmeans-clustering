@@ -142,9 +142,9 @@ int main(int argc, char *argv[]){
             if(res!=-1){
                 int j;
                 partialMatrix[res*(ncol+1)]++;
+                recvMatrix[i*(ncol+1)] = res;
                 for(j=1;j<ncol+1;j++){
                     partialMatrix[res*(ncol+1)+j] += recvMatrix[i*(ncol+1)+j];
-                    recvMatrix[i*(ncol+1)] = res;
                 }
             }
             // printf("Proc %d Thread %d Point %d: cluster %d\n", my_rank, omp_get_thread_num(), i, chooseCluster(i, k, ncol, recvMatrix, centroids));
