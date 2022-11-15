@@ -16,7 +16,7 @@ void printMatrix(int nrow, int ncol, float *dataMatrix, bool printFirstColumn){
             j = 1;
         }
         for (; j < ncol; j++){
-            printf("%.2f\t\t", dataMatrix[i*(ncol+1)+j]);
+            printf("%.2f\t\t", dataMatrix[i*ncol+j]);
         }
         printf("\n");
     }
@@ -128,4 +128,5 @@ bool isSameFloat(float f0, float f1, float error){
 
 bool stopExecution(int nrow, int ncol, float *matrix0, float *matrix1){
     //TODO
+    return false;
 }
