@@ -127,12 +127,13 @@ bool isSameFloat(float f0, float f1, float error){
 }
 
 bool stopExecution(int omp, int nrow, int ncol, float *centroids, float *sumpoints){
-    int i,j;
-    bool ret = false;
+    int i;
+    bool ret = true;
     #pragma omp parallel for num_threads(omp)
     for(i=0;i<nrow;i++){
+        int j;
         for(j=0;j<ncol;j++){
-            if (!isSameFloat(centroids[i*ncol+j], sumpoints[i*(ncol+1)+j+1], 0.1)) ret = true;
+            if (!isSameFloat(centroids[i*ncol+j], sumpoints[i*(ncol+1)+j+1], 0.1)) ret = false;
             centroids[i*ncol+j] = sumpoints[i*(ncol+1)+j+1];
         }
     }
