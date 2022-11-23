@@ -33,5 +33,5 @@ void matrixMean(int omp, int nrow, int ncol, float *matrix);
 bool isInArray(int elem, int dim, int *array);
 //check if two floating point values are the same
 bool isSameFloat(float f0, float f1, float error);
-//compare the old and new centroids to decide whether to stop
-bool stopExecution(int nrow, int ncol, float *matrix0, float *matrix1);
+//compare the old and new centroids to decide whether to stop (the new centroids in form of sum matrix), implemented using OMP only in P0, it also updates the current centroids
+bool stopExecution(int omp, int nrow, int ncol, float *centroids, float *summatrix);

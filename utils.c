@@ -126,7 +126,15 @@ bool isSameFloat(float f0, float f1, float error){
     return true;
 }
 
-bool stopExecution(int nrow, int ncol, float *matrix0, float *matrix1){
-    //TODO
-    return false;
+bool stopExecution(int omp, int nrow, int ncol, float *centroids, float *sumpoints){
+    int i,j;
+    bool ret = false;
+    #pragma omp parallel for num_threads(omp)
+    for(i=0;i<nrow;i++){
+        for(j=0;j<ncol;j++){
+            if (!isSameFloat(centroids[i*ncol+j], sumpoints[i*(ncol+1)+j+1], 0.1)) ret = true;
+            centroids[i*ncol+j] = sumpoints[i*(ncol+1)+j+1];
+        }
+    }
+    return ret;
 }

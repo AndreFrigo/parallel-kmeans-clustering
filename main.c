@@ -111,64 +111,67 @@ int main(int argc, char *argv[]){
         sumpointsP0 = (float *)malloc(k * (ncol+1) * sizeof(float));
     }
 
-    // //variable to check when to stop the algorithm
-    // bool stop = false;
-
-    // while(!stop){
-
-    // }
-
-    MPI_Bcast(centroids, k*ncol, MPI_FLOAT, 0, MPI_COMM_WORLD);
-
-    // printf("PROC %d\n", my_rank);
-    // printMatrix(k, ncol, centroids, true);
-
-    
     sumpoints = (float *)malloc(k * (ncol+1) * sizeof(float));
+    //variable to check when to stop the algorithm
+    bool stop = false;
+    while(!stop){
+        MPI_Bcast(centroids, k*ncol, MPI_FLOAT, 0, MPI_COMM_WORLD);
 
-    zeroMatrix(omp, k, ncol+1, sumpoints);
-    //TODO: handle clusters structure (keep the points divided by clusters to return the final grouping???)
-    #pragma omp parallel num_threads(omp)
-    {
-        int i;
-        //matrix to store sums for each threads (scope private)
-        float partialMatrix[k*(ncol+1)];
-        for(i=0;i<k*(ncol+1);i++) partialMatrix[i] = 0;
-        int res;
-        //store partial sums in the private matrix
-        #pragma omp for schedule(static, (int) scatterRow/omp)
-        for(i=0; i<scatterRow;i++){
-            res = chooseCluster(i, k, ncol, recvMatrix, centroids);
-            if(res!=-1){
-                int j;
-                partialMatrix[res*(ncol+1)]++;
-                recvMatrix[i*(ncol+1)] = res;
-                for(j=1;j<ncol+1;j++){
-                    partialMatrix[res*(ncol+1)+j] += recvMatrix[i*(ncol+1)+j];
+        // printf("PROC %d\n", my_rank);
+        // printMatrix(k, ncol, centroids, true);
+
+        zeroMatrix(omp, k, ncol+1, sumpoints);
+        #pragma omp parallel num_threads(omp)
+        {
+            int i;
+            //matrix to store sums for each threads (scope private)
+            float partialMatrix[k*(ncol+1)];
+            for(i=0;i<k*(ncol+1);i++) partialMatrix[i] = 0;
+            int res;
+            //store partial sums in the private matrix
+            #pragma omp for schedule(static, (int) scatterRow/omp)
+            for(i=0; i<scatterRow;i++){
+                res = chooseCluster(i, k, ncol, recvMatrix, centroids);
+                if(res!=-1){
+                    int j;
+                    partialMatrix[res*(ncol+1)]++;
+                    recvMatrix[i*(ncol+1)] = res;
+                    for(j=1;j<ncol+1;j++){
+                        partialMatrix[res*(ncol+1)+j] += recvMatrix[i*(ncol+1)+j];
+                    }
                 }
+                // printf("Proc %d Thread %d Point %d: cluster %d\n", my_rank, omp_get_thread_num(), i, chooseCluster(i, k, ncol, recvMatrix, centroids));
             }
-            // printf("Proc %d Thread %d Point %d: cluster %d\n", my_rank, omp_get_thread_num(), i, chooseCluster(i, k, ncol, recvMatrix, centroids));
+            //sum up the different private matrices in the shared one
+            #pragma omp critical
+            matrixSum(k, ncol+1, sumpoints, partialMatrix);
         }
-        //sum up the different private matrices in the shared one
-        #pragma omp critical
-        matrixSum(k, ncol+1, sumpoints, partialMatrix);
+        // printf("PROC %d\n",my_rank);
+        // printMatrix(k, ncol+1, sumpoints, true);
+
+        MPI_Reduce(sumpoints, sumpointsP0, k*(ncol+1), MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+        if(my_rank==0){
+            // printMatrix(k, ncol+1, sumpointsP0, true);
+            matrixMean(omp, k, ncol+1, sumpointsP0);
+            printf("Previous centroids\n");
+            printMatrix(k, ncol, centroids, true);
+            int i,j;
+            for(i=0; i<k; i++){
+                for(j=0;j<ncol;j++) centroids[i*ncol+j] = sumpointsP0[i*(ncol+1)+j+1];
+            }
+            printf("Actual centroids\n");
+            printMatrix(k, ncol, centroids, true);
+
+            if (stopExecution(omp, k, ncol, centroids, sumpointsP0)){
+                stop = true;
+                printf("Stop execution, printing final centroids\n");
+                printMatrix(k, ncol, centroids, true);
+            }
+        } 
+
+
     }
-    // printf("PROC %d\n",my_rank);
-    // printMatrix(k, ncol+1, sumpoints, true);
 
-    MPI_Reduce(sumpoints, sumpointsP0, k*(ncol+1), MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
-
-    if(my_rank==0){
-        // printMatrix(k, ncol+1, sumpointsP0, true);
-        matrixMean(omp, k, ncol+1, sumpointsP0);
-        printf("Previous centroids\n");
-        printMatrix(k, ncol, centroids, true);
-        int i,j;
-        for(i=0; i<k; i++){
-            for(j=0;j<ncol;j++) centroids[i*ncol+j] = sumpointsP0[i*(ncol+1)+j+1];
-        }
-        printf("Actual centroids\n");
-        printMatrix(k, ncol, centroids, true);
-    } 
     return 0;
 }
