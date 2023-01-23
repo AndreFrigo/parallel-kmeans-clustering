@@ -4,6 +4,7 @@
 #include <time.h>
 #include <omp.h>
 #include <stdbool.h>
+#include <sys/time.h>
 #include "functions.h"
 
 int main(int argc, char *argv[]){
@@ -24,6 +25,7 @@ int main(int argc, char *argv[]){
     int nrowold, nrow, ncol, k;
     float *dataMatrix=NULL;
     float *centroids=NULL;
+    struct timeval start, end;
 
     if(my_rank == 0){
         //3 arguments are expected: first the filename of the dataset, second the number of OMP processes, third the number of clusters
@@ -34,7 +36,7 @@ int main(int argc, char *argv[]){
         char *filename = argv[1];
         omp = atoi(argv[2]);
         k = atoi(argv[3]);
-        
+
         nrowold = getRows(filename);
         ncol = getCols(filename);
         //make the number of rows divisible by the number of MPI processes used
@@ -47,6 +49,8 @@ int main(int argc, char *argv[]){
         dataMatrix = (float *)malloc(nrow * (ncol+1) * sizeof(float));
         readFile(filename, nrow, ncol, dataMatrix);
 
+        //save start time after reading the dataset
+        gettimeofday(&start, NULL);
     }
 
     //broadcast nrow and ncol
@@ -150,7 +154,10 @@ int main(int argc, char *argv[]){
     MPI_Gather(recvMatrix, scatterRow*(ncol+1), MPI_FLOAT, dataMatrix, scatterRow*(ncol+1), MPI_FLOAT, 0, MPI_COMM_WORLD);
     free(recvMatrix);
     if(my_rank==0){
-        printMatrix(nrow, ncol+1, dataMatrix, true);
+        //calculate execution time before printing the matrix, but after gathering it
+        gettimeofday(&end, NULL);
+        printf("EXECUTION TIME: %ldms\n", ((end.tv_sec*1000 + end.tv_usec/1000) -(start.tv_sec*1000 + start.tv_usec/1000)));
+        // printMatrix(nrow, ncol+1, dataMatrix, true);
     }
     MPI_Finalize();
     return 0;
