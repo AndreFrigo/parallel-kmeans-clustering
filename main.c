@@ -26,7 +26,7 @@ int main(int argc, char *argv[]){
     float *centroids=NULL;
 
     if(my_rank == 0){
-        //2 arguments are expected: first the filename of the dataset, second the number of MPI processes
+        //3 arguments are expected: first the filename of the dataset, second the number of OMP processes, third the number of clusters
         if (argc < 4){
             printf("Error! Wrong number of arguments");
             return -1;
@@ -35,7 +35,6 @@ int main(int argc, char *argv[]){
         omp = atoi(argv[2]);
         k = atoi(argv[3]);
         
-        //useful to know how many points I have
         nrowold = getRows(filename);
         ncol = getCols(filename);
         //make the number of rows divisible by the number of MPI processes used
@@ -46,10 +45,7 @@ int main(int argc, char *argv[]){
         }
 
         dataMatrix = (float *)malloc(nrow * (ncol+1) * sizeof(float));
-        
-        
         readFile(filename, nrow, ncol, dataMatrix);
-
 
     }
 
@@ -74,9 +70,8 @@ int main(int argc, char *argv[]){
     if(my_rank==0){
         //choose randomly k centroids
         int i;
-        //TODO
-        // srand(time(NULL));
-        srand(1);
+        srand(time(NULL));
+        // srand(1);
         int alreadySelected[k];
         for (i=0;i<k;i++) alreadySelected[i] = -1;
         for(i=0;i<k;i++){
@@ -132,21 +127,31 @@ int main(int argc, char *argv[]){
         MPI_Reduce(sumpoints, sumpointsP0, k*(ncol+1), MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
         if(my_rank==0){
             matrixMean(omp, k, ncol+1, sumpointsP0);
-            printf("Previous centroids\n");
-            printMatrix(k, ncol, centroids, true);
-
             if (stopExecution(omp, k, ncol, centroids, sumpointsP0)){
                 stop = true;
                 printf("Stop execution, printing final centroids\n");
                 printMatrix(k, ncol, centroids, true);
             }else{
-                printf("Actual centroids\n");
-                printMatrix(k, ncol, centroids, true);
+                // for debugging iterations
+                // printf("Actual centroids\n");
+                // printMatrix(k, ncol, centroids, true);
             }
         } 
-
+        //broadcast the stopping condition, all processes have to stop in the same cycle
+        MPI_Bcast(&stop, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
 
     }
-
+    //out of loop, the algorithm has already finished, send the data with the choice of the cluster back to P0
+    if(my_rank==0){
+        dataMatrix = (float *)malloc(nrow * (ncol+1) * sizeof(float));
+    }else{
+        dataMatrix = NULL;
+    }
+    MPI_Gather(recvMatrix, scatterRow*(ncol+1), MPI_FLOAT, dataMatrix, scatterRow*(ncol+1), MPI_FLOAT, 0, MPI_COMM_WORLD);
+    free(recvMatrix);
+    if(my_rank==0){
+        printMatrix(nrow, ncol+1, dataMatrix, true);
+    }
+    MPI_Finalize();
     return 0;
 }
