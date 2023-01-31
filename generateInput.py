@@ -16,10 +16,11 @@ data = []
 i=0
 maxran = numelem/10
 while(i<numelem):
-    el = [round(random.uniform(0, maxran), 2) for e in range(0, numcol)]
-    if el not in data:
-        data.append(el)
-        i+=1
+    data.append([round(random.uniform(0, maxran), 2) for e in range(0, numcol)])
+    i+=1
+    # if el not in data:
+    #     data.append(el)
+    #     i+=1
 
 
 with open('datasets/dataset_'+str(numcol)+'_'+str(numelem)+'.csv', 'w', encoding='UTF8', newline='') as f:
