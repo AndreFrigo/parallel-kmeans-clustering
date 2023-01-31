@@ -27,8 +27,8 @@ int getRows(char *filename){
         if (c == '\n') count += 1;
  
     fclose(fp);
-    //first row is the header, but the last is not counted
-    return count;
+    //first row is the header
+    return count-1;
 }
 
 int getCols(char *filename){
@@ -187,16 +187,13 @@ int main(int argc, char *argv[]){
 
     char *filename = argv[1];
     k = atoi(argv[2]);
-    printf("TEST\n");
     //save start time after reading the dataset
     gettimeofday(&start, NULL);
 
     nrow = getRows(filename);
     ncol = getCols(filename);
-
     dataMatrix = (float *)malloc(nrow * (ncol+1) * sizeof(float));
     readFile(filename, nrow, ncol, dataMatrix);
-
     //save start time after reading the dataset
     gettimeofday(&afterReading, NULL);
 
@@ -250,24 +247,25 @@ int main(int argc, char *argv[]){
 
         matrixMean(k, ncol+1, sumpoints);
         cont++;
-        if(NUMITER>0){
-            if(cont>=NUMITER){
-                stop = true;
-                printf("Stop execution, printing final centroids\n");
-                printMatrix(k, ncol, centroids, true);
-            }
-        }else{
-            if (stopExecution(k, ncol, centroids, sumpoints)){
-                stop = true;
-                printf("Stop execution, printing final centroids\n");
-                printMatrix(k, ncol, centroids, true);
-            }
+
+        // if(DEBUG){
+        //     printf("Iteration %d, actual centroids:\n", cont);
+        //     printMatrix(k, ncol, sumpoints, true);
+        // }
+
+        
+        if (stopExecution(k, ncol, centroids, sumpoints) || (NUMITER>0 && cont>=NUMITER)){
+            stop = true;
+            printf("Stop execution after %d cycles, printing final centroids\n", cont);
+            printMatrix(k, ncol, centroids, true);
         }
+        
     }
 
     gettimeofday(&end, NULL);
 
     //print statistics
+    printf("NROW: %d, NCOL: %d\n", nrow, ncol);
     printf("EXECUTION TIME FOR DIFFERENT PHASES IN MICROSECONDS\n");
     printf("TOTAL EXECUTION TIME: %ld\n", ((end.tv_sec*1000000 + end.tv_usec) -(start.tv_sec*1000000 + start.tv_usec)));
     printf("READING DATASET TIME: %ld\n", ((afterReading.tv_sec*1000000 + afterReading.tv_usec) -(start.tv_sec*1000000 + start.tv_usec)));
