@@ -155,15 +155,11 @@ bool stopExecution(int nrow, int ncol, float *centroids, float *sumpoints){
     return ret;
 }
 
-void printMatrix(int nrow, int ncol, float *dataMatrix, bool printFirstColumn){
+void printMatrix(int nrow, int ncol, float *dataMatrix){
     int i,j;
     printf("PRINTING MATRIX\n");
     for (i = 0; i < nrow; i++){
-        if (printFirstColumn){
-            j = 0;
-        }else{
-            j = 1;
-        }
+        j=0;
         for (; j < ncol; j++){
             printf("%.2f\t\t", dataMatrix[i*ncol+j]);
         }
@@ -222,7 +218,7 @@ int main(int argc, char *argv[]){
     gettimeofday(&afterRandomCentroids, NULL);
     if(DEBUG){
         printf("Generated centroids:\n");
-        printMatrix(k, ncol, centroids, true);
+        printMatrix(k, ncol, centroids);
     }
     sumpoints = (float *)malloc(k * (ncol+1) * sizeof(float));
     //variable to check when to stop the algorithm
@@ -250,14 +246,14 @@ int main(int argc, char *argv[]){
 
         // if(DEBUG){
         //     printf("Iteration %d, actual centroids:\n", cont);
-        //     printMatrix(k, ncol, sumpoints, true);
+        //     printMatrix(k, ncol, sumpoints);
         // }
 
         
         if (stopExecution(k, ncol, centroids, sumpoints) || (NUMITER>0 && cont>=NUMITER)){
             stop = true;
             printf("Stop execution after %d cycles, printing final centroids\n", cont);
-            printMatrix(k, ncol, centroids, true);
+            printMatrix(k, ncol, centroids);
         }
         
     }
@@ -265,7 +261,7 @@ int main(int argc, char *argv[]){
     gettimeofday(&end, NULL);
 
     //print statistics
-    printf("NROW: %d, NCOL: %d\n", nrow, ncol);
+    printf("NROW: %d, NCOL: %d, NITER: %d\n", nrow, ncol, cont);
     printf("EXECUTION TIME FOR DIFFERENT PHASES IN MICROSECONDS\n");
     printf("TOTAL EXECUTION TIME: %ld\n", ((end.tv_sec*1000000 + end.tv_usec) -(start.tv_sec*1000000 + start.tv_usec)));
     printf("READING DATASET TIME: %ld\n", ((afterReading.tv_sec*1000000 + afterReading.tv_usec) -(start.tv_sec*1000000 + start.tv_usec)));
