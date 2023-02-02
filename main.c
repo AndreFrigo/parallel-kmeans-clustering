@@ -6,6 +6,8 @@
 #include <stdbool.h>
 #include <sys/time.h>
 #include "functions.h"
+#define DEBUG 1
+#define NUMITER 0
 
 int main(int argc, char *argv[]){
     //process id
@@ -22,10 +24,10 @@ int main(int argc, char *argv[]){
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size(MPI_COMM_WORLD , &n_proc);
 
-    int nrowold, nrow, ncol, k;
+    int nrowold, nrow, ncol, k, cont;
     float *dataMatrix=NULL;
     float *centroids=NULL;
-    struct timeval start, end;
+    struct timeval start, afterReading, beforeWhile, beforeReconstructingMatrix, end;
 
     if(my_rank == 0){
         //3 arguments are expected: first the filename of the dataset, second the number of OMP processes, third the number of clusters
@@ -36,6 +38,9 @@ int main(int argc, char *argv[]){
         char *filename = argv[1];
         omp = atoi(argv[2]);
         k = atoi(argv[3]);
+        cont = 0;
+
+        gettimeofday(&start, NULL);
 
         nrowold = getRows(filename);
         ncol = getCols(filename);
@@ -50,7 +55,7 @@ int main(int argc, char *argv[]){
         readFile(filename, nrow, ncol, dataMatrix);
 
         //save start time after reading the dataset
-        gettimeofday(&start, NULL);
+        gettimeofday(&afterReading, NULL);
     }
 
     //broadcast nrow and ncol
@@ -74,8 +79,11 @@ int main(int argc, char *argv[]){
     if(my_rank==0){
         //choose randomly k centroids
         int i;
-        srand(time(NULL));
-        // srand(1);
+        if(DEBUG){
+            srand(1);
+        }else{
+            srand(time(NULL));
+        }
         int alreadySelected[k];
         for (i=0;i<k;i++) alreadySelected[i] = -1;
         for(i=0;i<k;i++){
@@ -91,10 +99,15 @@ int main(int argc, char *argv[]){
             }
         }
         free(dataMatrix);
+        if(DEBUG){
+            printf("Generated centroids:\n");
+            printMatrix(k, ncol, centroids);
+        }
         sumpointsP0 = (float *)malloc(k * (ncol+1) * sizeof(float));
     }
 
     sumpoints = (float *)malloc(k * (ncol+1) * sizeof(float));
+    if(my_rank==0) gettimeofday(&beforeWhile, NULL);
     //variable to check when to stop the algorithm
     bool stop = false;
     while(!stop){
@@ -130,15 +143,16 @@ int main(int argc, char *argv[]){
 
         MPI_Reduce(sumpoints, sumpointsP0, k*(ncol+1), MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
         if(my_rank==0){
+            cont++;
             matrixMean(omp, k, ncol+1, sumpointsP0);
             if (stopExecution(omp, k, ncol, centroids, sumpointsP0)){
                 stop = true;
                 printf("Stop execution, printing final centroids\n");
-                printMatrix(k, ncol, centroids, true);
+                printMatrix(k, ncol, centroids);
             }else{
                 // for debugging iterations
                 // printf("Actual centroids\n");
-                // printMatrix(k, ncol, centroids, true);
+                // printMatrix(k, ncol, centroids);
             }
         } 
         //broadcast the stopping condition, all processes have to stop in the same cycle
@@ -154,10 +168,19 @@ int main(int argc, char *argv[]){
     MPI_Gather(recvMatrix, scatterRow*(ncol+1), MPI_FLOAT, dataMatrix, scatterRow*(ncol+1), MPI_FLOAT, 0, MPI_COMM_WORLD);
     free(recvMatrix);
     if(my_rank==0){
+        gettimeofday(&beforeReconstructingMatrix, NULL);
+        //TODO: remove fake points from dataMatrix
         //calculate execution time before printing the matrix, but after gathering it
         gettimeofday(&end, NULL);
-        printf("EXECUTION TIME: %ldms\n", ((end.tv_sec*1000 + end.tv_usec/1000) -(start.tv_sec*1000 + start.tv_usec/1000)));
-        // printMatrix(nrow, ncol+1, dataMatrix, true);
+
+        //print statistics
+        printf("NROW: %d, NCOL: %d, NITER: %d\n", nrowold, ncol, cont);
+        printf("EXECUTION TIME FOR DIFFERENT PHASES IN MICROSECONDS\n");
+        printf("TOTAL EXECUTION TIME: %ld\n", ((end.tv_sec*1000000 + end.tv_usec) -(start.tv_sec*1000000 + start.tv_usec)));
+        printf("READING DATASET TIME: %ld\n", ((afterReading.tv_sec*1000000 + afterReading.tv_usec) -(start.tv_sec*1000000 + start.tv_usec)));
+        printf("AVERAGE CYCLIC EXECUTION TIME: %ld\n", ((beforeReconstructingMatrix.tv_sec*1000000 + beforeReconstructingMatrix.tv_usec) -(beforeWhile.tv_sec*1000000 + beforeWhile.tv_usec))/cont);
+        printf("RECONSTRUCTING DATA MATRIX TIME: %ld\n", ((end.tv_sec*1000000 + end.tv_usec) -(beforeReconstructingMatrix.tv_sec*1000000 + beforeReconstructingMatrix.tv_usec)));
+        // printMatrix(nrow, ncol+1, dataMatrix);
     }
     MPI_Finalize();
     return 0;

@@ -6,16 +6,11 @@
 #include <float.h>
 #define EMPTY -1.0
 
-void printMatrix(int nrow, int ncol, float *dataMatrix, bool printFirstColumn){
+void printMatrix(int nrow, int ncol, float *dataMatrix){
     int i,j;
     printf("PRINTING MATRIX\n");
     for (i = 0; i < nrow; i++){
-        if (printFirstColumn){
-            j = 0;
-        }else{
-            j = 1;
-        }
-        for (; j < ncol; j++){
+        for (j = 0; j < ncol; j++){
             printf("%.2f\t\t", dataMatrix[i*ncol+j]);
         }
         printf("\n");
