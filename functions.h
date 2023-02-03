@@ -17,8 +17,6 @@ void printMatrix(int nrow, int ncol, float *dataMatrix);
 void addEmptyRow(int row, int ncol, float *dataMatrix);
 //check if a row is not significant, return true if it is empty, otherwise false
 bool isEmptyRow(int row, int ncol, float *dataMatrix);
-//initialize a matrix inserting 0.0 in each cell
-void zeroMatrix(int omp, int nrow, int ncol, float *matrix);
 //calculate distance between two points (one point of the matrix and one centroid)
 float distance(int r0, int r1, int ncol, float *matrix, float *centroids);
 //returns the index of the centroid nearest to a specific point, returns -1 in case of not real point

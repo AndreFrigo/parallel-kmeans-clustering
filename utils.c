@@ -8,7 +8,6 @@
 
 void printMatrix(int nrow, int ncol, float *dataMatrix){
     int i,j;
-    printf("PRINTING MATRIX\n");
     for (i = 0; i < nrow; i++){
         for (j = 0; j < ncol; j++){
             printf("%.2f\t\t", dataMatrix[i*ncol+j]);
@@ -36,21 +35,6 @@ bool isEmptyRow(int row, int ncol, float *dataMatrix){
     return true;
 }
 
-void zeroMatrix(int omp, int nrow, int ncol, float *matrix){
-    // int i,j;
-    // for(i=0;i<nrow;i++){
-    //     for(j=0;j<ncol;j++){
-    //         matrix[i*ncol+j] = 0.0;
-    //     }
-    // }
-    int i;
-    #pragma omp parallel for num_threads(omp)
-    for(i=0;i<nrow*ncol;i++){
-        matrix[i] = 0.0;
-    }
-
-    return;
-}
 
 float distance(int r0, int r1, int ncol, float *matrix, float *centroids){
     double res = 0;

@@ -27,7 +27,7 @@ int main(int argc, char *argv[]){
     int nrowold, nrow, ncol, k, cont;
     float *dataMatrix=NULL;
     float *centroids=NULL;
-    struct timeval start, afterReading, beforeWhile, beforeReconstructingMatrix, end;
+    struct timeval start, afterReading, beforeWhile, end;
 
     if(my_rank == 0){
         //3 arguments are expected: first the filename of the dataset, second the number of OMP processes, third the number of clusters
@@ -112,12 +112,12 @@ int main(int argc, char *argv[]){
     bool stop = false;
     while(!stop){
         MPI_Bcast(centroids, k*ncol, MPI_FLOAT, 0, MPI_COMM_WORLD);
-
-        zeroMatrix(omp, k, ncol+1, sumpoints);
-
         #pragma omp parallel num_threads(omp)
         {
             int i;
+            //reset the sumpoints matrix
+            #pragma omp for
+            for(i=0;i<k*(ncol+1);i++) sumpoints[i] = 0.0;
             //matrix to store sums for each threads (scope private)
             float partialMatrix[k*(ncol+1)];
             for(i=0;i<k*(ncol+1);i++) partialMatrix[i] = 0.0;
@@ -145,7 +145,7 @@ int main(int argc, char *argv[]){
         if(my_rank==0){
             cont++;
             matrixMean(omp, k, ncol+1, sumpointsP0);
-            if (stopExecution(omp, k, ncol, centroids, sumpointsP0)){
+            if (stopExecution(omp, k, ncol, centroids, sumpointsP0) || (NUMITER > 0 && cont >= NUMITER)){
                 stop = true;
                 printf("Stop execution, printing final centroids\n");
                 printMatrix(k, ncol, centroids);
@@ -159,6 +159,8 @@ int main(int argc, char *argv[]){
         MPI_Bcast(&stop, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
 
     }
+    free(sumpoints);
+    free(sumpointsP0);
     //out of loop, the algorithm has already finished, send the data with the choice of the cluster back to P0
     if(my_rank==0){
         dataMatrix = (float *)malloc(nrow * (ncol+1) * sizeof(float));
@@ -168,8 +170,6 @@ int main(int argc, char *argv[]){
     MPI_Gather(recvMatrix, scatterRow*(ncol+1), MPI_FLOAT, dataMatrix, scatterRow*(ncol+1), MPI_FLOAT, 0, MPI_COMM_WORLD);
     free(recvMatrix);
     if(my_rank==0){
-        gettimeofday(&beforeReconstructingMatrix, NULL);
-        //TODO: remove fake points from dataMatrix
         //calculate execution time before printing the matrix, but after gathering it
         gettimeofday(&end, NULL);
 
@@ -178,9 +178,9 @@ int main(int argc, char *argv[]){
         printf("EXECUTION TIME FOR DIFFERENT PHASES IN MICROSECONDS\n");
         printf("TOTAL EXECUTION TIME: %ld\n", ((end.tv_sec*1000000 + end.tv_usec) -(start.tv_sec*1000000 + start.tv_usec)));
         printf("READING DATASET TIME: %ld\n", ((afterReading.tv_sec*1000000 + afterReading.tv_usec) -(start.tv_sec*1000000 + start.tv_usec)));
-        printf("AVERAGE CYCLIC EXECUTION TIME: %ld\n", ((beforeReconstructingMatrix.tv_sec*1000000 + beforeReconstructingMatrix.tv_usec) -(beforeWhile.tv_sec*1000000 + beforeWhile.tv_usec))/cont);
-        printf("RECONSTRUCTING DATA MATRIX TIME: %ld\n", ((end.tv_sec*1000000 + end.tv_usec) -(beforeReconstructingMatrix.tv_sec*1000000 + beforeReconstructingMatrix.tv_usec)));
-        // printMatrix(nrow, ncol+1, dataMatrix);
+        printf("AVERAGE CYCLIC EXECUTION TIME: %ld\n", ((end.tv_sec*1000000 + end.tv_usec) -(beforeWhile.tv_sec*1000000 + beforeWhile.tv_usec))/cont);
+        // no need to remove fake points from the matrix, the gather works by rank order, so it's enough to use nrowold instead of nrow
+        // printMatrix(nrowold, ncol+1, dataMatrix);
     }
     MPI_Finalize();
     return 0;
