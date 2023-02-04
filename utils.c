@@ -86,8 +86,9 @@ void matrixMean(int omp, int nrow, int ncol, float *matrix){
     #pragma omp parallel for num_threads(omp)
     for(i=0;i<nrow;i++){
         int j;
-        for(j=1;j<ncol;j++) matrix[i*ncol+j] /= matrix[i*ncol];
-        matrix[i*ncol] = 1.0; 
+        for(j=1;j<ncol;j++){
+            if(matrix[i*ncol] > 0) matrix[i*ncol+j] /= matrix[i*ncol];
+        } 
     }
 }
 
