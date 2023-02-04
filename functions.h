@@ -23,8 +23,6 @@ float distance(int r0, int r1, int ncol, float *matrix, float *centroids);
 int chooseCluster(int p, int k, int ncol, float *matrix, float *centroids);
 //sum two matrixes (serial)
 void matrixSum(int nrow, int ncol, float *matrix1, float *matrix2);
-//sum two matrixes (parallel with OMP)
-void matrixSumParallel(int omp, int nrow, int ncol, float *matrix1, float *matrix2);
 //calculates the weighted mean of a matrix that has as first column the weight
 void matrixMean(int omp, int nrow, int ncol, float *matrix);
 //check if an integer element is in an integer array

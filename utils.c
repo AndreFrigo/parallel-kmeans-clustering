@@ -70,16 +70,6 @@ void matrixSum(int nrow, int ncol, float *matrix1, float *matrix2){
     }
 }
 
-void matrixSumParallel(int omp, int nrow, int ncol, float *matrix1, float *matrix2){
-    int i;
-    #pragma omp parallel for num_threads(omp)
-    for(i=0;i<nrow;i++){
-        int j;
-        for(j=0;j<ncol;j++){
-            matrix1[i*ncol+j] = matrix2[i*ncol+j];
-        }
-    }
-}
 
 void matrixMean(int omp, int nrow, int ncol, float *matrix){
     int i;
