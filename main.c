@@ -130,6 +130,7 @@ int main(int argc, char *argv[]){
                     int j;
                     partialMatrix[res*(ncol+1)]++;
                     recvMatrix[i*(ncol+1)] = res;
+                    //TODO: test with parallel for
                     for(j=1;j<ncol+1;j++){
                         partialMatrix[res*(ncol+1)+j] += recvMatrix[i*(ncol+1)+j];
                     }
@@ -151,8 +152,8 @@ int main(int argc, char *argv[]){
                 printMatrix(k, ncol, centroids);
             }else{
                 // for debugging iterations
-                // printf("Actual centroids\n");
-                // printMatrix(k, ncol, centroids);
+                printf("Iteration %d, actual centroids:\n", cont);
+                printMatrix(k, ncol, centroids);
             }
         } 
         //broadcast the stopping condition, all processes have to stop in the same cycle
