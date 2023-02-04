@@ -112,7 +112,7 @@ int main(int argc, char *argv[]){
     bool stop = false;
     while(!stop){
         MPI_Bcast(centroids, k*ncol, MPI_FLOAT, 0, MPI_COMM_WORLD);
-        #pragma omp parallel num_threads(omp)
+        #pragma omp parallel num_threads(omp) shared(sumpoints)
         {
             int i;
             //reset the sumpoints matrix
@@ -123,7 +123,7 @@ int main(int argc, char *argv[]){
             for(i=0;i<k*(ncol+1);i++) partialMatrix[i] = 0.0;
             int res;
             //store partial sums in the private matrix
-            #pragma omp for schedule(static, (int) scatterRow/omp)
+            #pragma omp for nowait schedule(static, 1)
             for(i=0; i<scatterRow;i++){
                 res = chooseCluster(i, k, ncol, recvMatrix, centroids);
                 if(res!=-1){
