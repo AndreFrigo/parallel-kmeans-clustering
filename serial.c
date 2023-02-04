@@ -157,7 +157,6 @@ bool stopExecution(int nrow, int ncol, float *centroids, float *sumpoints){
 
 void printMatrix(int nrow, int ncol, float *dataMatrix){
     int i,j;
-    printf("PRINTING MATRIX\n");
     for (i = 0; i < nrow; i++){
         j=0;
         for (; j < ncol; j++){
@@ -244,10 +243,7 @@ int main(int argc, char *argv[]){
         matrixMean(k, ncol+1, sumpoints);
         cont++;
 
-        // if(DEBUG){
-        //     printf("Iteration %d, actual centroids:\n", cont);
-        //     printMatrix(k, ncol, sumpoints);
-        // }
+    
 
         
         if (stopExecution(k, ncol, centroids, sumpoints) || (NUMITER>0 && cont>=NUMITER)){
@@ -255,6 +251,12 @@ int main(int argc, char *argv[]){
             printf("Stop execution after %d cycles, printing final centroids\n", cont);
             printMatrix(k, ncol, centroids);
         }
+        // else{
+        //     if(DEBUG){
+        //         printf("Iteration %d, actual centroids:\n", cont);
+        //         printMatrix(k, ncol, centroids);
+        //     }
+        // }
         
     }
 
