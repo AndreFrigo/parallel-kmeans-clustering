@@ -50,7 +50,7 @@ int getCols(char *filename){
     return count+1;
 }
 
-void readFile(char *filename, int nrow, int ncol, float *dataMatrix){
+void readFile(char *filename, int nrow, int ncol, double *dataMatrix){
     FILE *fp;
     char row[MAXCHAR];
     char *token;
@@ -82,20 +82,20 @@ void readFile(char *filename, int nrow, int ncol, float *dataMatrix){
 
 }
 
-float distance(int r0, int r1, int ncol, float *matrix, float *centroids){
+double distance(int r0, int r1, int ncol, double *matrix, double *centroids){
     double res = 0;
     int i;
     for(i=0;i<ncol;i++){
         res += pow((double)(matrix[r0*ncol+i] - centroids[r1*ncol+i]), 2);
     }
-    return (float) sqrt(res);
+    return sqrt(res);
 }
 
-int chooseCluster(int p, int k, int ncol, float *matrix, float *centroids){
+int chooseCluster(int p, int k, int ncol, double *matrix, double *centroids){
     int c = -1;
-    float dist = FLT_MAX;
+    double dist = DBL_MAX;
     int i;
-    float d;
+    double d;
     //in case of non existing point return -1
     if(matrix[p*ncol+1] == EMPTY) return -1;
     
@@ -109,7 +109,7 @@ int chooseCluster(int p, int k, int ncol, float *matrix, float *centroids){
     return c;
 }
 
-void zeroMatrix(int nrow, int ncol, float *matrix){
+void zeroMatrix(int nrow, int ncol, double *matrix){
     int i;
     for(i=0;i<nrow*ncol;i++){
         matrix[i] = 0.0;
@@ -118,7 +118,7 @@ void zeroMatrix(int nrow, int ncol, float *matrix){
     return;
 }
 
-void matrixMean(int nrow, int ncol, int *vec, float *matrix){
+void matrixMean(int nrow, int ncol, int *vec, double *matrix){
     int i;
     for(i=0;i<nrow;i++){
         int j;
@@ -126,7 +126,7 @@ void matrixMean(int nrow, int ncol, int *vec, float *matrix){
     }
 }
 
-bool isSameFloat(float f0, float f1, float error){
+bool isSameDouble(double f0, double f1, double error){
     if(f0-f1>error || f0-f1<-1*error) return false;
     return true;
 }
@@ -140,20 +140,20 @@ bool isInArray(int elem, int dim, int *array){
     return false;
 }
 
-bool stopExecution(int nrow, int ncol, float *centroids, float *sumpoints){
+bool stopExecution(int nrow, int ncol, double *centroids, double *sumpoints){
     int i;
     bool ret = true;
     for(i=0;i<nrow;i++){
         int j;
         for(j=0;j<ncol;j++){
-            if (!isSameFloat(centroids[i*ncol+j], sumpoints[i*ncol+j], 0.1)) ret = false;
+            if (!isSameDouble(centroids[i*ncol+j], sumpoints[i*ncol+j], 0.1)) ret = false;
             centroids[i*ncol+j] = sumpoints[i*ncol+j];
         }
     }
     return ret;
 }
 
-void printMatrix(int nrow, int ncol, float *dataMatrix){
+void printMatrix(int nrow, int ncol, double *dataMatrix){
     int i,j;
     for (i = 0; i < nrow; i++){
         j=0;
@@ -168,9 +168,9 @@ void printMatrix(int nrow, int ncol, float *dataMatrix){
 int main(int argc, char *argv[]){
 
     int nrow, ncol, k;
-    float *dataMatrix=NULL;
-    float *sumpoints=NULL;
-    float *centroids=NULL;
+    double *dataMatrix=NULL;
+    double *sumpoints=NULL;
+    double *centroids=NULL;
     struct timeval start, afterReading, afterRandomCentroids, beforeWhile, end;
     int *mapping=NULL;
     int *counter=NULL;
@@ -187,13 +187,13 @@ int main(int argc, char *argv[]){
 
     nrow = getRows(filename);
     ncol = getCols(filename);
-    dataMatrix = (float *)malloc(nrow * ncol * sizeof(float));
+    dataMatrix = (double *)malloc(nrow * ncol * sizeof(double));
     mapping = (int *)malloc(nrow * sizeof(int));
     readFile(filename, nrow, ncol, dataMatrix);
     //save start time after reading the dataset
     gettimeofday(&afterReading, NULL);
 
-    centroids = (float *)malloc(k * ncol * sizeof(float));
+    centroids = (double *)malloc(k * ncol * sizeof(double));
     //choose randomly k centroids
     int i;
     if(DEBUG){
@@ -220,7 +220,7 @@ int main(int argc, char *argv[]){
         printf("Generated centroids:\n");
         printMatrix(k, ncol, centroids);
     }
-    sumpoints = (float *)malloc(k * ncol * sizeof(float));
+    sumpoints = (double *)malloc(k * ncol * sizeof(double));
     counter = (int *)malloc(k * sizeof(int));
     //variable to check when to stop the algorithm
     bool stop = false;
