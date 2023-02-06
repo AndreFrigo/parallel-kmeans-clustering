@@ -23,8 +23,10 @@ float distance(int r0, int r1, int ncol, float *matrix, float *centroids);
 int chooseCluster(int p, int k, int ncol, float *matrix, float *centroids);
 //sum two matrixes (serial)
 void matrixSum(int nrow, int ncol, float *matrix1, float *matrix2);
+//sum two vectors (serial)
+void vectorSum(int dim, int *dest, int *source);
 //calculates the weighted mean of a matrix that has as first column the weight
-void matrixMean(int omp, int nrow, int ncol, float *matrix);
+void matrixMean(int omp, int nrow, int ncol, int *vec, float *matrix);
 //check if an integer element is in an integer array
 bool isInArray(int elem, int dim, int *array);
 //check if two floating point values are the same

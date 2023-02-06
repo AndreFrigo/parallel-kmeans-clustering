@@ -28,6 +28,9 @@ int main(int argc, char *argv[]){
     float *dataMatrix=NULL;
     float *centroids=NULL;
     struct timeval start, afterReading, beforeWhile, end;
+    int *mapping=NULL;
+    int *counter=NULL;
+    int *counterP0 = NULL;
 
     if(my_rank == 0){
         //3 arguments are expected: first the filename of the dataset, second the number of OMP processes, third the number of clusters
@@ -51,9 +54,11 @@ int main(int argc, char *argv[]){
             nrow = nrowold;
         }
 
-        dataMatrix = (float *)malloc(nrow * (ncol+1) * sizeof(float));
+        dataMatrix = (float *)malloc(nrow * ncol * sizeof(float));
         readFile(filename, nrow, ncol, dataMatrix);
-
+        mapping = (int *)malloc(nrow * sizeof(int));
+        // int i;
+        // for(i=0;i<nrow;i++) mapping[i] = -1;
         //save start time after reading the dataset
         gettimeofday(&afterReading, NULL);
     }
@@ -66,10 +71,11 @@ int main(int argc, char *argv[]){
 
     //scatter the dataMatrix
     int scatterRow=nrow/n_proc;
-    float* recvMatrix = (float *)malloc(scatterRow * (ncol+1) * sizeof(float));
-    //scatter the matrix
-    MPI_Scatter(dataMatrix, scatterRow*(ncol+1), MPI_FLOAT, recvMatrix, scatterRow*(ncol+1), MPI_FLOAT, 0, MPI_COMM_WORLD);
-
+    //scatter the matrix and the mapping vector
+    float* recvMatrix = (float *)malloc(scatterRow * ncol * sizeof(float));
+    MPI_Scatter(dataMatrix, scatterRow*ncol, MPI_FLOAT, recvMatrix, scatterRow*ncol, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    int *recvMapping = (int *)malloc(scatterRow * sizeof(int));
+    MPI_Scatter(mapping, scatterRow, MPI_INT, recvMapping, scatterRow, MPI_INT, 0, MPI_COMM_WORLD);
 
     centroids = (float *)malloc(k * ncol * sizeof(float));
     //for each process a matrix that stores the sum of all points of each cluster and the number of points
@@ -91,22 +97,23 @@ int main(int argc, char *argv[]){
             if(!isInArray(r, k, alreadySelected)){
                 int c;
                 for(c=0;c<ncol;c++){
-                    centroids[i*ncol+c] = dataMatrix[r*(ncol+1)+c+1];
+                    centroids[i*ncol+c] = dataMatrix[r*ncol+c];
                 }
                 alreadySelected[i] = r;
             }else{
                 i--;
             }
         }
-        free(dataMatrix);
         if(DEBUG){
             printf("Generated centroids:\n");
             printMatrix(k, ncol, centroids);
         }
-        sumpointsP0 = (float *)malloc(k * (ncol+1) * sizeof(float));
+        sumpointsP0 = (float *)malloc(k * ncol * sizeof(float));
+        counterP0 = (int *)malloc(k * sizeof(int));
     }
 
-    sumpoints = (float *)malloc(k * (ncol+1) * sizeof(float));
+    sumpoints = (float *)malloc(k * ncol * sizeof(float));
+    counter = (int *)malloc(k * sizeof(int));
     if(my_rank==0) gettimeofday(&beforeWhile, NULL);
     //variable to check when to stop the algorithm
     bool stop = false;
@@ -117,10 +124,14 @@ int main(int argc, char *argv[]){
             int i;
             //reset the sumpoints matrix
             #pragma omp for
-            for(i=0;i<k*(ncol+1);i++) sumpoints[i] = 0.0;
+            for(i=0;i<k*ncol;i++) sumpoints[i] = 0.0;
+            #pragma omp for
+            for(i=0;i<k;i++) counter[i] = 0;
             //matrix to store sums for each threads (scope private)
-            float partialMatrix[k*(ncol+1)];
-            for(i=0;i<k*(ncol+1);i++) partialMatrix[i] = 0.0;
+            float partialMatrix[k*ncol];
+            int partialCounter[k];
+            for(i=0;i<k*ncol;i++) partialMatrix[i] = 0.0;
+            for(i=0;i<k;i++) partialCounter[i] = 0;
             int res;
             //store partial sums in the private matrix
             #pragma omp for nowait schedule(static, 1)
@@ -128,24 +139,28 @@ int main(int argc, char *argv[]){
                 res = chooseCluster(i, k, ncol, recvMatrix, centroids);
                 if(res!=-1){
                     int j;
-                    partialMatrix[res*(ncol+1)]++;
-                    recvMatrix[i*(ncol+1)] = res;
+                    partialCounter[res]++;
+                    recvMapping[i] = res;
                     //TODO: test with parallel for
-                    for(j=1;j<ncol+1;j++){
-                        partialMatrix[res*(ncol+1)+j] += recvMatrix[i*(ncol+1)+j];
+                    for(j=0;j<ncol;j++){
+                        partialMatrix[res*ncol+j] += recvMatrix[i*ncol+j];
                     }
                 }
             }
             //sum up the different private matrices in the shared one
             #pragma omp critical
-            matrixSum(k, ncol+1, sumpoints, partialMatrix);
+            {
+                matrixSum(k, ncol, sumpoints, partialMatrix);
+                vectorSum(k, counter, partialCounter);
+            }
 
         }
 
-        MPI_Reduce(sumpoints, sumpointsP0, k*(ncol+1), MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(sumpoints, sumpointsP0, k*ncol, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(counter, counterP0, k, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
         if(my_rank==0){
             cont++;
-            matrixMean(omp, k, ncol+1, sumpointsP0);
+            matrixMean(omp, k, ncol, counterP0, sumpointsP0);
             if (stopExecution(omp, k, ncol, centroids, sumpointsP0) || (NUMITER > 0 && cont >= NUMITER)){
                 stop = true;
                 printf("Stop execution, printing final centroids\n");
@@ -162,14 +177,13 @@ int main(int argc, char *argv[]){
     }
     free(sumpoints);
     free(sumpointsP0);
-    //out of loop, the algorithm has already finished, send the data with the choice of the cluster back to P0
-    if(my_rank==0){
-        dataMatrix = (float *)malloc(nrow * (ncol+1) * sizeof(float));
-    }else{
-        dataMatrix = NULL;
-    }
-    MPI_Gather(recvMatrix, scatterRow*(ncol+1), MPI_FLOAT, dataMatrix, scatterRow*(ncol+1), MPI_FLOAT, 0, MPI_COMM_WORLD);
+    free(counter);
+    free(counterP0);
+    
+    MPI_Gather(recvMatrix, scatterRow*ncol, MPI_FLOAT, dataMatrix, scatterRow*ncol, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    MPI_Gather(recvMapping, scatterRow, MPI_FLOAT, mapping, scatterRow, MPI_FLOAT, 0, MPI_COMM_WORLD);
     free(recvMatrix);
+    free(recvMapping);
     if(my_rank==0){
         //calculate execution time before printing the matrix, but after gathering it
         gettimeofday(&end, NULL);
@@ -181,7 +195,7 @@ int main(int argc, char *argv[]){
         printf("READING DATASET TIME: %ld\n", ((afterReading.tv_sec*1000000 + afterReading.tv_usec) -(start.tv_sec*1000000 + start.tv_usec)));
         printf("AVERAGE CYCLIC EXECUTION TIME: %ld\n", ((end.tv_sec*1000000 + end.tv_usec) -(beforeWhile.tv_sec*1000000 + beforeWhile.tv_usec))/cont);
         // no need to remove fake points from the matrix, the gather works by rank order, so it's enough to use nrowold instead of nrow
-        // printMatrix(nrowold, ncol+1, dataMatrix);
+        // printMatrix(nrowold, ncol, dataMatrix);
     }
     MPI_Finalize();
     return 0;

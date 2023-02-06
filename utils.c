@@ -18,10 +18,9 @@ void printMatrix(int nrow, int ncol, float *dataMatrix){
 }
 
 void addEmptyRow(int row, int ncol, float *dataMatrix){
-    int i = 1;
-    dataMatrix[row*(ncol+1)] = -1.0;
+    int i = 0;
     for(;i<ncol+1;i++){
-        dataMatrix[row*(ncol+1)+i] = EMPTY;
+        dataMatrix[row*ncol+i] = EMPTY;
     }
 }
 
@@ -40,7 +39,7 @@ float distance(int r0, int r1, int ncol, float *matrix, float *centroids){
     double res = 0;
     int i;
     for(i=0;i<ncol;i++){
-        res += pow((double)(matrix[r0*(ncol+1)+i+1] - centroids[r1*ncol+i]), 2);
+        res += pow((double)(matrix[r0*ncol+i] - centroids[r1*ncol+i]), 2);
     }
     return (float) sqrt(res);
 }
@@ -51,7 +50,7 @@ int chooseCluster(int p, int k, int ncol, float *matrix, float *centroids){
     int i;
     float d;
     //in case of non existing point return -1
-    if(matrix[p*(ncol+1)+1] == EMPTY) return -1;
+    if(matrix[p*ncol+1] == EMPTY) return -1;
     
     for(i=0;i<k;i++){
         d = distance(p, i, ncol, matrix, centroids);
@@ -70,14 +69,21 @@ void matrixSum(int nrow, int ncol, float *matrix1, float *matrix2){
     }
 }
 
+void vectorSum(int dim, int *dest, int *source){
+    int i;
+    for(i=0;i<dim;i++){
+        dest[i] += source[i];
+    }
+}
 
-void matrixMean(int omp, int nrow, int ncol, float *matrix){
+
+void matrixMean(int omp, int nrow, int ncol, int *vec, float *matrix){
     int i;
     #pragma omp parallel for num_threads(omp)
     for(i=0;i<nrow;i++){
         int j;
-        for(j=1;j<ncol;j++){
-            if(matrix[i*ncol] > 0) matrix[i*ncol+j] /= matrix[i*ncol];
+        for(j=0;j<ncol;j++){
+            matrix[i*ncol+j] /= vec[i];
         } 
     }
 }
@@ -103,8 +109,8 @@ bool stopExecution(int omp, int nrow, int ncol, float *centroids, float *sumpoin
     for(i=0;i<nrow;i++){
         int j;
         for(j=0;j<ncol;j++){
-            if (!isSameFloat(centroids[i*ncol+j], sumpoints[i*(ncol+1)+j+1], 0.1)) ret = false;
-            centroids[i*ncol+j] = sumpoints[i*(ncol+1)+j+1];
+            if (!isSameFloat(centroids[i*ncol+j], sumpoints[i*ncol+j], 0.1)) ret = false;
+            centroids[i*ncol+j] = sumpoints[i*ncol+j];
         }
     }
     return ret;
