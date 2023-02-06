@@ -68,10 +68,9 @@ void readFile(char *filename, int nrow, int ncol, float *dataMatrix){
     while (feof(fp) != true){
         fgets(row, MAXCHAR, fp);
         token = strtok(row, ",");
-        int c = 1;
+        int c = 0;
         while(token != NULL){
-            dataMatrix[r*(ncol+1)] = -1.0;
-            dataMatrix[r*(ncol+1)+c] = atof(token);
+            dataMatrix[r*ncol+c] = atof(token);
             token = strtok(NULL, ",");
             c++;
         }
@@ -87,7 +86,7 @@ float distance(int r0, int r1, int ncol, float *matrix, float *centroids){
     double res = 0;
     int i;
     for(i=0;i<ncol;i++){
-        res += pow((double)(matrix[r0*(ncol+1)+i+1] - centroids[r1*ncol+i]), 2);
+        res += pow((double)(matrix[r0*ncol+i] - centroids[r1*ncol+i]), 2);
     }
     return (float) sqrt(res);
 }
@@ -98,7 +97,7 @@ int chooseCluster(int p, int k, int ncol, float *matrix, float *centroids){
     int i;
     float d;
     //in case of non existing point return -1
-    if(matrix[p*(ncol+1)+1] == EMPTY) return -1;
+    if(matrix[p*ncol+1] == EMPTY) return -1;
     
     for(i=0;i<k;i++){
         d = distance(p, i, ncol, matrix, centroids);
@@ -119,12 +118,11 @@ void zeroMatrix(int nrow, int ncol, float *matrix){
     return;
 }
 
-void matrixMean(int nrow, int ncol, float *matrix){
+void matrixMean(int nrow, int ncol, int *vec, float *matrix){
     int i;
     for(i=0;i<nrow;i++){
         int j;
-        for(j=1;j<ncol;j++) matrix[i*ncol+j] /= matrix[i*ncol];
-        matrix[i*ncol] = 1.0; 
+        for(j=0;j<ncol;j++) matrix[i*ncol+j] /= vec[i];
     }
 }
 
@@ -148,8 +146,8 @@ bool stopExecution(int nrow, int ncol, float *centroids, float *sumpoints){
     for(i=0;i<nrow;i++){
         int j;
         for(j=0;j<ncol;j++){
-            if (!isSameFloat(centroids[i*ncol+j], sumpoints[i*(ncol+1)+j+1], 0.1)) ret = false;
-            centroids[i*ncol+j] = sumpoints[i*(ncol+1)+j+1];
+            if (!isSameFloat(centroids[i*ncol+j], sumpoints[i*ncol+j], 0.1)) ret = false;
+            centroids[i*ncol+j] = sumpoints[i*ncol+j];
         }
     }
     return ret;
@@ -174,6 +172,8 @@ int main(int argc, char *argv[]){
     float *sumpoints=NULL;
     float *centroids=NULL;
     struct timeval start, afterReading, afterRandomCentroids, beforeWhile, end;
+    int *mapping=NULL;
+    int *counter=NULL;
 
     if (argc < 3){
         printf("Error! Wrong number of arguments");
@@ -187,7 +187,8 @@ int main(int argc, char *argv[]){
 
     nrow = getRows(filename);
     ncol = getCols(filename);
-    dataMatrix = (float *)malloc(nrow * (ncol+1) * sizeof(float));
+    dataMatrix = (float *)malloc(nrow * ncol * sizeof(float));
+    mapping = (int *)malloc(nrow * sizeof(int));
     readFile(filename, nrow, ncol, dataMatrix);
     //save start time after reading the dataset
     gettimeofday(&afterReading, NULL);
@@ -207,7 +208,7 @@ int main(int argc, char *argv[]){
         if(!isInArray(r, k, alreadySelected)){
             int c;
             for(c=0;c<ncol;c++){
-                centroids[i*ncol+c] = dataMatrix[r*(ncol+1)+c+1];
+                centroids[i*ncol+c] = dataMatrix[r*ncol+c];
             }
             alreadySelected[i] = r;
         }else{
@@ -219,28 +220,30 @@ int main(int argc, char *argv[]){
         printf("Generated centroids:\n");
         printMatrix(k, ncol, centroids);
     }
-    sumpoints = (float *)malloc(k * (ncol+1) * sizeof(float));
+    sumpoints = (float *)malloc(k * ncol * sizeof(float));
+    counter = (int *)malloc(k * sizeof(int));
     //variable to check when to stop the algorithm
     bool stop = false;
     int cont = 0;
     int res;
     gettimeofday(&beforeWhile, NULL);
     while(!stop){
-        zeroMatrix(k, ncol+1, sumpoints);
+        zeroMatrix(k, ncol, sumpoints);
         int i;
+        for(i=0;i<k;i++) counter[i] = 0;
         for(i=0;i<nrow;i++){
             res = chooseCluster(i, k, ncol, dataMatrix, centroids);
             if(res!=-1){
                 int j;
-                sumpoints[res*(ncol+1)]++;
-                dataMatrix[i*(ncol+1)] = res;
-                for(j=1;j<ncol+1;j++){
-                    sumpoints[res*(ncol+1)+j] += dataMatrix[i*(ncol+1)+j];
+                counter[res]++;
+                mapping[i] = res;
+                for(j=0;j<ncol;j++){
+                    sumpoints[res*ncol+j] += dataMatrix[i*ncol+j];
                 }
             }
         }
 
-        matrixMean(k, ncol+1, sumpoints);
+        matrixMean(k, ncol, counter, sumpoints);
         cont++;
 
     
