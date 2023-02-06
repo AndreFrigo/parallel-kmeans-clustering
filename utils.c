@@ -6,7 +6,7 @@
 #include <float.h>
 #define EMPTY -1.0
 
-void printMatrix(int nrow, int ncol, float *dataMatrix){
+void printMatrix(int nrow, int ncol, double *dataMatrix){
     int i,j;
     for (i = 0; i < nrow; i++){
         for (j = 0; j < ncol; j++){
@@ -17,14 +17,14 @@ void printMatrix(int nrow, int ncol, float *dataMatrix){
     printf("----------------------------------------------------------\n");
 }
 
-void addEmptyRow(int row, int ncol, float *dataMatrix){
+void addEmptyRow(int row, int ncol, double *dataMatrix){
     int i = 0;
     for(;i<ncol+1;i++){
         dataMatrix[row*ncol+i] = EMPTY;
     }
 }
 
-bool isEmptyRow(int row, int ncol, float *dataMatrix){
+bool isEmptyRow(int row, int ncol, double *dataMatrix){
     int i = 0;
     for(;i<ncol;i++){
         if(dataMatrix[row*ncol+i]!=EMPTY){
@@ -35,20 +35,20 @@ bool isEmptyRow(int row, int ncol, float *dataMatrix){
 }
 
 
-float distance(int r0, int r1, int ncol, float *matrix, float *centroids){
+double distance(int r0, int r1, int ncol, double *matrix, double *centroids){
     double res = 0;
     int i;
     for(i=0;i<ncol;i++){
         res += pow((double)(matrix[r0*ncol+i] - centroids[r1*ncol+i]), 2);
     }
-    return (float) sqrt(res);
+    return sqrt(res);
 }
 
-int chooseCluster(int p, int k, int ncol, float *matrix, float *centroids){
+int chooseCluster(int p, int k, int ncol, double *matrix, double *centroids){
     int c = -1;
-    float dist = FLT_MAX;
+    double dist = DBL_MAX;
     int i;
-    float d;
+    double d;
     //in case of non existing point return -1
     if(matrix[p*ncol+1] == EMPTY) return -1;
     
@@ -62,7 +62,7 @@ int chooseCluster(int p, int k, int ncol, float *matrix, float *centroids){
     return c;
 }
 
-void matrixSum(int nrow, int ncol, float *matrix1, float *matrix2){
+void matrixSum(int nrow, int ncol, double *matrix1, double *matrix2){
     int i;
     for(i=0;i<nrow*ncol;i++){
         matrix1[i] += matrix2[i];
@@ -77,7 +77,7 @@ void vectorSum(int dim, int *dest, int *source){
 }
 
 
-void matrixMean(int omp, int nrow, int ncol, int *vec, float *matrix){
+void matrixMean(int omp, int nrow, int ncol, int *vec, double *matrix){
     int i;
     #pragma omp parallel for num_threads(omp)
     for(i=0;i<nrow;i++){
@@ -97,19 +97,19 @@ bool isInArray(int elem, int dim, int *array){
     return false;
 }
 
-bool isSameFloat(float f0, float f1, float error){
+bool isSameDouble(double f0, double f1, double error){
     if(f0-f1>error || f0-f1<-1*error) return false;
     return true;
 }
 
-bool stopExecution(int omp, int nrow, int ncol, float *centroids, float *sumpoints){
+bool stopExecution(int omp, int nrow, int ncol, double *centroids, double *sumpoints){
     int i;
     bool ret = true;
     #pragma omp parallel for num_threads(omp)
     for(i=0;i<nrow;i++){
         int j;
         for(j=0;j<ncol;j++){
-            if (!isSameFloat(centroids[i*ncol+j], sumpoints[i*ncol+j], 0.1)) ret = false;
+            if (!isSameDouble(centroids[i*ncol+j], sumpoints[i*ncol+j], 0.1)) ret = false;
             centroids[i*ncol+j] = sumpoints[i*ncol+j];
         }
     }

@@ -25,8 +25,8 @@ int main(int argc, char *argv[]){
     MPI_Comm_size(MPI_COMM_WORLD , &n_proc);
 
     int nrowold, nrow, ncol, k, cont;
-    float *dataMatrix=NULL;
-    float *centroids=NULL;
+    double *dataMatrix=NULL;
+    double *centroids=NULL;
     struct timeval start, afterReading, beforeWhile, end;
     int *mapping=NULL;
     int *counter=NULL;
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]){
             nrow = nrowold;
         }
 
-        dataMatrix = (float *)malloc(nrow * ncol * sizeof(float));
+        dataMatrix = (double *)malloc(nrow * ncol * sizeof(double));
         readFile(filename, nrow, ncol, dataMatrix);
         mapping = (int *)malloc(nrow * sizeof(int));
         // int i;
@@ -72,16 +72,16 @@ int main(int argc, char *argv[]){
     //scatter the dataMatrix
     int scatterRow=nrow/n_proc;
     //scatter the matrix and the mapping vector
-    float* recvMatrix = (float *)malloc(scatterRow * ncol * sizeof(float));
-    MPI_Scatter(dataMatrix, scatterRow*ncol, MPI_FLOAT, recvMatrix, scatterRow*ncol, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    double* recvMatrix = (double *)malloc(scatterRow * ncol * sizeof(double));
+    MPI_Scatter(dataMatrix, scatterRow*ncol, MPI_DOUBLE, recvMatrix, scatterRow*ncol, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     int *recvMapping = (int *)malloc(scatterRow * sizeof(int));
     MPI_Scatter(mapping, scatterRow, MPI_INT, recvMapping, scatterRow, MPI_INT, 0, MPI_COMM_WORLD);
 
-    centroids = (float *)malloc(k * ncol * sizeof(float));
+    centroids = (double *)malloc(k * ncol * sizeof(double));
     //for each process a matrix that stores the sum of all points of each cluster and the number of points
-    float *sumpoints = NULL;
+    double *sumpoints = NULL;
     //same as before, but for P0 to store the sum of all the sumpoints matrices and compare the results with the centroids of the previous iteration
-    float *sumpointsP0 = NULL;
+    double *sumpointsP0 = NULL;
     if(my_rank==0){
         //choose randomly k centroids
         int i;
@@ -108,17 +108,17 @@ int main(int argc, char *argv[]){
             printf("Generated centroids:\n");
             printMatrix(k, ncol, centroids);
         }
-        sumpointsP0 = (float *)malloc(k * ncol * sizeof(float));
+        sumpointsP0 = (double *)malloc(k * ncol * sizeof(double));
         counterP0 = (int *)malloc(k * sizeof(int));
     }
 
-    sumpoints = (float *)malloc(k * ncol * sizeof(float));
+    sumpoints = (double *)malloc(k * ncol * sizeof(double));
     counter = (int *)malloc(k * sizeof(int));
     if(my_rank==0) gettimeofday(&beforeWhile, NULL);
     //variable to check when to stop the algorithm
     bool stop = false;
     while(!stop){
-        MPI_Bcast(centroids, k*ncol, MPI_FLOAT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(centroids, k*ncol, MPI_DOUBLE, 0, MPI_COMM_WORLD);
         #pragma omp parallel num_threads(omp) shared(sumpoints)
         {
             int i;
@@ -128,7 +128,7 @@ int main(int argc, char *argv[]){
             #pragma omp for
             for(i=0;i<k;i++) counter[i] = 0;
             //matrix to store sums for each threads (scope private)
-            float partialMatrix[k*ncol];
+            double partialMatrix[k*ncol];
             int partialCounter[k];
             for(i=0;i<k*ncol;i++) partialMatrix[i] = 0.0;
             for(i=0;i<k;i++) partialCounter[i] = 0;
@@ -156,7 +156,7 @@ int main(int argc, char *argv[]){
 
         }
 
-        MPI_Reduce(sumpoints, sumpointsP0, k*ncol, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+        MPI_Reduce(sumpoints, sumpointsP0, k*ncol, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
         MPI_Reduce(counter, counterP0, k, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
         if(my_rank==0){
             cont++;
@@ -165,11 +165,12 @@ int main(int argc, char *argv[]){
                 stop = true;
                 printf("Stop execution, printing final centroids\n");
                 printMatrix(k, ncol, centroids);
-            }else{
-                // for debugging iterations
-                printf("Iteration %d, actual centroids:\n", cont);
-                printMatrix(k, ncol, centroids);
             }
+            // else{
+            //     // for debugging iterations
+            //     printf("Iteration %d, actual centroids:\n", cont);
+            //     printMatrix(k, ncol, centroids);
+            // }
         } 
         //broadcast the stopping condition, all processes have to stop in the same cycle
         MPI_Bcast(&stop, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
@@ -179,17 +180,18 @@ int main(int argc, char *argv[]){
     free(sumpointsP0);
     free(counter);
     free(counterP0);
-    
-    MPI_Gather(recvMatrix, scatterRow*ncol, MPI_FLOAT, dataMatrix, scatterRow*ncol, MPI_FLOAT, 0, MPI_COMM_WORLD);
-    MPI_Gather(recvMapping, scatterRow, MPI_FLOAT, mapping, scatterRow, MPI_FLOAT, 0, MPI_COMM_WORLD);
+
+    MPI_Gather(recvMatrix, scatterRow*ncol, MPI_DOUBLE, dataMatrix, scatterRow*ncol, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Gather(recvMapping, scatterRow, MPI_INT, mapping, scatterRow, MPI_INT, 0, MPI_COMM_WORLD);
     free(recvMatrix);
     free(recvMapping);
     if(my_rank==0){
+        nrow = nrowold;
         //calculate execution time before printing the matrix, but after gathering it
         gettimeofday(&end, NULL);
 
         //print statistics
-        printf("NROW: %d, NCOL: %d, NITER: %d\n", nrowold, ncol, cont);
+        printf("NROW: %d, NCOL: %d, NITER: %d\n", nrow, ncol, cont);
         printf("EXECUTION TIME FOR DIFFERENT PHASES IN MICROSECONDS\n");
         printf("TOTAL EXECUTION TIME: %ld\n", ((end.tv_sec*1000000 + end.tv_usec) -(start.tv_sec*1000000 + start.tv_usec)));
         printf("READING DATASET TIME: %ld\n", ((afterReading.tv_sec*1000000 + afterReading.tv_usec) -(start.tv_sec*1000000 + start.tv_usec)));

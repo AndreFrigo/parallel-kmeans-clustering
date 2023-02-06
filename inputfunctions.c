@@ -43,7 +43,7 @@ int getCols(char *filename){
     return count+1;
 }
 
-void readFile(char *filename, int nrow, int ncol, float *dataMatrix){
+void readFile(char *filename, int nrow, int ncol, double *dataMatrix){
     FILE *fp;
     char row[MAXCHAR];
     char *token;
