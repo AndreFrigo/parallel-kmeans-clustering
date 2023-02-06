@@ -104,10 +104,10 @@ int main(int argc, char *argv[]){
                 i--;
             }
         }
-        if(DEBUG){
-            printf("Generated centroids:\n");
-            printMatrix(k, ncol, centroids);
-        }
+        // if(DEBUG){
+        //     printf("Generated centroids:\n");
+        //     printMatrix(k, ncol, centroids);
+        // }
         sumpointsP0 = (double *)malloc(k * ncol * sizeof(double));
         counterP0 = (int *)malloc(k * sizeof(int));
     }
@@ -115,11 +115,14 @@ int main(int argc, char *argv[]){
     sumpoints = (double *)malloc(k * ncol * sizeof(double));
     counter = (int *)malloc(k * sizeof(int));
     if(my_rank==0) gettimeofday(&beforeWhile, NULL);
+    //matrix to store sums for each threads (scope private)
+    double partialMatrix[k*ncol];
+    int partialCounter[k];
     //variable to check when to stop the algorithm
     bool stop = false;
     while(!stop){
         MPI_Bcast(centroids, k*ncol, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        #pragma omp parallel num_threads(omp) shared(sumpoints)
+        #pragma omp parallel num_threads(omp) shared(sumpoints, counter) private(partialMatrix, partialCounter)
         {
             int i;
             //reset the sumpoints matrix
@@ -127,9 +130,7 @@ int main(int argc, char *argv[]){
             for(i=0;i<k*ncol;i++) sumpoints[i] = 0.0;
             #pragma omp for
             for(i=0;i<k;i++) counter[i] = 0;
-            //matrix to store sums for each threads (scope private)
-            double partialMatrix[k*ncol];
-            int partialCounter[k];
+
             for(i=0;i<k*ncol;i++) partialMatrix[i] = 0.0;
             for(i=0;i<k;i++) partialCounter[i] = 0;
             int res;
