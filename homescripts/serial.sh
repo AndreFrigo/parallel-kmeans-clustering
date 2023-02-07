@@ -16,6 +16,7 @@ echo "" >> $file
 echo "#PBS -l select=1:ncpus=1:mem=2gb" >> $file
 echo "#PBS -l walltime=0:05:00" >> $file
 echo "#PBS -q short_cpuQ" >> $file
+echo "#PBS -l place=scatter:excl" >> $file
 echo "" >> $file
 echo "./$executable $1 $2" >> $file
 chmod +x ./$file
