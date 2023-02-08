@@ -182,7 +182,6 @@ int main(int argc, char *argv[]){
     free(counter);
     free(counterP0);
 
-    MPI_Gather(recvMatrix, scatterRow*ncol, MPI_DOUBLE, dataMatrix, scatterRow*ncol, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     MPI_Gather(recvMapping, scatterRow, MPI_INT, mapping, scatterRow, MPI_INT, 0, MPI_COMM_WORLD);
     free(recvMatrix);
     free(recvMapping);
