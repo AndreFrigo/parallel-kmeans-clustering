@@ -142,19 +142,16 @@ int main(int argc, char *argv[]){
                     int j;
                     partialCounter[res]++;
                     recvMapping[i] = res;
-                    //TODO: test with parallel for
                     for(j=0;j<ncol;j++){
                         partialMatrix[res*ncol+j] += recvMatrix[i*ncol+j];
                     }
                 }
             }
-            //sum up the different private matrices in the shared one
-            #pragma omp critical
-            {
-                matrixSum(k, ncol, sumpoints, partialMatrix);
-                vectorSum(k, counter, partialCounter);
-            }
-
+            //sum up the different private structures in the shared one
+            #pragma omp critical(matrix)
+            matrixSum(k, ncol, sumpoints, partialMatrix);
+            #pragma omp critical(array)
+            vectorSum(k, counter, partialCounter);
         }
 
         MPI_Reduce(sumpoints, sumpointsP0, k*ncol, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
