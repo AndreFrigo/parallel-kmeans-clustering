@@ -75,7 +75,6 @@ int main(int argc, char *argv[]){
     double* recvMatrix = (double *)malloc(scatterRow * ncol * sizeof(double));
     MPI_Scatter(dataMatrix, scatterRow*ncol, MPI_DOUBLE, recvMatrix, scatterRow*ncol, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     int *recvMapping = (int *)malloc(scatterRow * sizeof(int));
-    MPI_Scatter(mapping, scatterRow, MPI_INT, recvMapping, scatterRow, MPI_INT, 0, MPI_COMM_WORLD);
 
     centroids = (double *)malloc(k * ncol * sizeof(double));
     //for each process a matrix that stores the sum of all points of each cluster and the number of points
